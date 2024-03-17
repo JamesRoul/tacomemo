@@ -1,0 +1,13 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'  # Carga los submódulos al hacer checkout
+
+      # Añade aquí más pasos para tu flujo de trabajo
