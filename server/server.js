@@ -1,11 +1,16 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
-const cors = require('cors');
+import express from 'express';
+import bodyParser from 'body-parser';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import sqlite3 from 'sqlite3';
+import cors from 'cors';
+import fetch from 'node-fetch'; // Importation comme module ES
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -85,6 +90,125 @@ app.delete('/delete-carousel-image/:id', (req, res) => {
     res.json({ message: 'Imagen eliminada correctamente.' });
   });
 });
+
+const ZELTY_API_KEY = 'MTE0ODQ6RF/sWrd3fnkRzxlXrdKe4rANWwU=';
+
+app.get('/api/catalogue', async (req, res) => {
+  const apiUrl = 'https://api.zelty.fr/2.7/catalog/tags';
+  try {
+    const apiResponse = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${ZELTY_API_KEY}`
+      }
+    });
+
+    if (!apiResponse.ok) {
+      throw new Error(`Erreur API: ${apiResponse.statusText}`);
+    }
+
+    const data = await apiResponse.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Erreur lors de la communication avec l\'API Zelty :', error);
+    res.status(500).send('Erreur interne du serveur');
+  }
+});
+
+app.get('/api/get-tags', async (req, res) => {
+  const lang = req.query.lang || 'fr'; // Défaut à 'fr' si non spécifié
+  const showAll = req.query.show_all === '1'; // Convertit le paramètre en booléen
+
+  try {
+    const apiUrl = `https://api.zelty.fr/2.7/catalog/tags?lang=${lang}${showAll ? '&show_all=1' : ''}`;
+    const apiResponse = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${ZELTY_API_KEY}`
+      }
+    });
+
+    if (!apiResponse.ok) {
+      throw new Error(`Erreur API: ${apiResponse.statusText}`);
+    }
+
+    const data = await apiResponse.json();
+    res.json(data); // Envoie les données récupérées au client
+  } catch (error) {
+    console.error('Erreur lors de la récupération des tags :', error);
+    res.status(500).send('Erreur interne du serveur');
+  }
+});
+app.get('/catalog/dishes', async (req, res) => {
+  const { show_all, all_restaurants, lang, limit, offset } = req.query; // Desestructuración de parámetros GET
+
+  // Construye la URL con los parámetros opcionales
+  let apiUrl = 'https://api.zelty.fr/2.7/catalog/dishes';
+  const queryParams = new URLSearchParams({
+      ...(show_all ? { 'show_all': show_all } : {}),
+      ...(all_restaurants ? { 'all_restaurants': all_restaurants } : {}),
+      ...(lang ? { 'lang': lang } : {}),
+      ...(limit ? { 'limit': limit } : {}),
+      ...(offset ? { 'offset': offset } : {})
+  }).toString();
+
+  if (queryParams) {
+      apiUrl += `?${queryParams}`;
+  }
+
+  try {
+      const apiResponse = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${ZELTY_API_KEY}` // Asegúrate de tener tu API Key correctamente configurada aquí
+          }
+      });
+
+      if (!apiResponse.ok) {
+          throw new Error(`Error de la API: ${apiResponse.statusText}`);
+      }
+
+      const data = await apiResponse.json();
+      res.json(data); // Envía los datos de los platos al cliente
+  } catch (error) {
+      console.error('Error al comunicarse con la API de Zelty:', error);
+      res.status(500).send('Error interno del servidor');
+  }
+});
+app.get('/catalog/menus', async (req, res) => {
+  const { show_all, all_restaurants } = req.query; // Desestructuración de parámetros GET
+
+  // Construye la URL con los parámetros opcionales
+  let apiUrl = 'https://api.zelty.fr/2.7/catalog/menus';
+  const queryParams = new URLSearchParams({
+    ...(show_all ? { 'show_all': show_all } : {}),
+    ...(all_restaurants ? { 'all_restaurants': all_restaurants } : {}),
+  }).toString();
+
+  if (queryParams) {
+    apiUrl += `?${queryParams}`;
+  }
+
+  try {
+    const apiResponse = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${ZELTY_API_KEY}` // Asegúrate de tener tu API Key correctamente configurada aquí
+      }
+    });
+
+    if (!apiResponse.ok) {
+      throw new Error(`Error de la API: ${apiResponse.statusText}`);
+    }
+
+    const data = await apiResponse.json();
+    res.json(data); // Envía los datos de los menús al cliente
+  } catch (error) {
+    console.error('Error al comunicarse con la API de Zelty:', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Servidor escuchando en el puerto ${port}`);
